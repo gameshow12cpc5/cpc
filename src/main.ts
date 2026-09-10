@@ -1727,7 +1727,7 @@ fragments.list.onItemSet.add(
     await classifyFloors();
 
     await setIfcSpacesVisibility(
-      true,
+      false,
     );
 
   },
