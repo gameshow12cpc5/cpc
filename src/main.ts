@@ -357,7 +357,7 @@ highlighter.setup({
   world,
 });
 
-highlighter.zoomToSelection = true;
+highlighter.zoomToSelection = false;
 
 // ============================================================
 // START: BIM SELECTION ACTION
@@ -538,7 +538,7 @@ highlighter.events.select.onClear.add(
 // END: HIGHLIGHTER
 // ============================================================
 
-highlighter.zoomToSelection = true;
+highlighter.zoomToSelection = false;
 
 
 
@@ -588,7 +588,7 @@ const casters = components.get(OBC.Raycasters);
 casters.get(world);
 
 const clipper = components.get(OBC.Clipper);
-clipper.enabled = true;
+clipper.enabled = false;
 
 const classifier = components.get(OBC.Classifier);
 classifier.enabled = true;
@@ -615,13 +615,13 @@ const floorGroups =
   new Map<string, boolean>();
 
 let ifcSpacesVisible = true;
-let clipperEnabled = true;
+let clipperEnabled = false;
 
 const clipperStatusLabel =
   document.createElement("div");
 
 clipperStatusLabel.textContent =
-  "Clipper: Enabled";
+  "Clipper: Disabled";
 
 clipperStatusLabel.style.position =
   "absolute";
@@ -4271,10 +4271,6 @@ clipperToggleButton.addEventListener(
     }
 
   },
-);
-
-switchControlPanelSection(
-  activateClipperSection,
 );
 
 // ============================================================
