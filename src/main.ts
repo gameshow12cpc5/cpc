@@ -347,6 +347,7 @@ const loadSampleFragment = async () => {
 // ============================================================
 
 
+
 // ============================================================
 // START: HIGHLIGHTER
 // ============================================================
@@ -358,61 +359,6 @@ highlighter.setup({
 });
 
 highlighter.zoomToSelection = false;
-
-// ============================================================
-// START: BIM SELECTION ACTION
-// ============================================================
-//
-// When the user clicks a BIM element, the Highlighter already
-// selects and highlights it.
-//
-// We simply add a small "View Properties" action.
-// The existing BIM query/property-panel system handles the
-// actual property loading.
-//
-
-const selectionAction = document.createElement("div");
-
-selectionAction.style.position = "absolute";
-selectionAction.style.display = "none";
-selectionAction.style.zIndex = "20";
-selectionAction.style.padding = "0.35rem";
-selectionAction.style.background = "rgba(12, 16, 22, 0.96)";
-selectionAction.style.border = "1px solid rgba(255,255,255,0.12)";
-selectionAction.style.borderRadius = "0.4rem";
-selectionAction.style.backdropFilter = "blur(10px)";
-
-const viewPropertiesButton =
-  document.createElement("button");
-
-viewPropertiesButton.textContent =
-  "View Properties";
-
-viewPropertiesButton.style.cursor =
-  "pointer";
-
-viewPropertiesButton.style.border =
-  "none";
-
-viewPropertiesButton.style.borderRadius =
-  "0.3rem";
-
-viewPropertiesButton.style.padding =
-  "0.4rem 0.65rem";
-
-viewPropertiesButton.style.background =
-  "rgba(255,255,255,0.10)";
-
-viewPropertiesButton.style.color =
-  "white";
-
-selectionAction.appendChild(
-  viewPropertiesButton,
-);
-
-viewport.appendChild(
-  selectionAction,
-);
 
 // Store the currently selected BIM element.
 let selectedBIMData:
@@ -455,18 +401,6 @@ highlighter.events.select.onHighlight.add(
       localId: Number(localId),
     };
 
-    // Show the action.
-    selectionAction.style.display =
-      "block";
-
-    // Position near the top-right of
-    // the viewport for now.
-    selectionAction.style.top =
-      "4.5rem";
-
-    selectionAction.style.right =
-      "0.75rem";
-
   },
 );
 
@@ -476,42 +410,7 @@ highlighter.events.select.onHighlight.add(
 
 
 // ------------------------------------------------------------
-// START: VIEW PROPERTIES BUTTON
-// ------------------------------------------------------------
-
-viewPropertiesButton.addEventListener(
-  "click",
-  () => {
-
-    if (!selectedBIMData) {
-      return;
-    }
-
-    // Convert the selection into the
-    // same data format used by the
-    // existing BIM query pipeline.
-    void runRawBIMQuery({
-      modelId:
-        selectedBIMData.modelId,
-
-      localId:
-        selectedBIMData.localId,
-    });
-
-    // Hide the quick action after
-    // opening the properties.
-    selectionAction.style.display =
-      "none";
-  },
-);
-
-// ------------------------------------------------------------
-// END: VIEW PROPERTIES BUTTON
-// ------------------------------------------------------------
-
-
-// ------------------------------------------------------------
-// START: CLEAR SELECTION ACTION
+// START: CLEAR SELECTION DATA
 // ------------------------------------------------------------
 
 highlighter.events.select.onClear.add(
@@ -519,19 +418,16 @@ highlighter.events.select.onClear.add(
 
     selectedBIMData = null;
 
-    selectionAction.style.display =
-      "none";
-
   },
 );
 
 // ------------------------------------------------------------
-// END: CLEAR SELECTION ACTION
+// END: CLEAR SELECTION DATA
 // ------------------------------------------------------------
 
 
 // ============================================================
-// END: BIM SELECTION ACTION
+// END: BIM SELECTION
 // ============================================================
 
 // ============================================================
@@ -555,7 +451,15 @@ viewport.addEventListener("dblclick", async () => {
   // If nothing was selected, stop here.
   if (!result) return;
 
-  console.log("[property-panel] Double-click detected");
+  if (!selectedBIMData) return;
+
+  void runRawBIMQuery({
+    modelId:
+      selectedBIMData.modelId,
+
+    localId:
+      selectedBIMData.localId,
+  });
 
 });
 
@@ -2219,6 +2123,8 @@ const propertyRow = (
 // ------------------------------------------------------------
 // END: FUNCTION - propertyRow()
 // ------------------------------------------------------------
+
+
 
 
 // ------------------------------------------------------------
