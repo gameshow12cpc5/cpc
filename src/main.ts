@@ -445,6 +445,8 @@ highlighter.zoomToSelection = false;
 // Listen for a double-click anywhere inside the BIM viewport.
 viewport.addEventListener("dblclick", async () => {
 
+  if (clipper.enabled) return;
+
   // Get the element currently under the mouse.
   const result = highlighter.highlight("select");
 
