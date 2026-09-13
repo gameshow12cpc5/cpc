@@ -1620,7 +1620,7 @@ async function resetViewer() {
   }
 
   renderElementTypeVisibilityControls();
-  
+
 
   // Keep IFCSPACE hidden
   await setIfcSpacesVisibility(false);
@@ -3943,7 +3943,6 @@ const setMaterialOpacity = (
 // END: FUNCTION - setMaterialOpacity()
 // ------------------------------------------------------------
 
-
 // ------------------------------------------------------------
 // START: FUNCTION - applyTreeSelectionVisual()
 // ------------------------------------------------------------
@@ -3960,49 +3959,19 @@ const applyTreeSelectionVisual =
       localId,
     );
 
-    // Clear previous highlight.
-    highlighter.clear();
-
-    // Make the entire model transparent.
-    setMaterialOpacity(
-      0.2,
-    );
-
-    // Restore selected element to solid.
     const selection:
       OBC.ModelIdMap = {
         [modelId]:
           new Set([localId]),
       };
 
-    const model =
-      fragments.list.get(modelId);
-
-    if (model) {
-      await model.setOpacity(
-        [localId],
-        1,
-      );
-    }
-
-    // Highlight selected element.
-    highlighter.add(
-      {
-        customId: "tree-selection",
-        color: new THREE.Color(0x4c8dff),
-        renderedFaces: 0,
-        opacity: 1,
-        transparent: false,
-      },
-    );
-
-    highlighter.selection["tree-selection"] =
-      selection;
-
-    console.log(
-      "[tree selection] Selected element is solid:",
-      modelId,
-      localId,
+    // Highlight selected element
+    // and zoom camera to it.
+    await highlighter.highlightByID(
+      "select",
+      selection,
+      true,
+      true,
     );
 
   };
