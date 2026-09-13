@@ -1599,7 +1599,8 @@ fragments.list.onItemSet.add(
       true,
     );
 
-    // Move grid to model's lowest point.
+    // Move grid to model's lowest point
+    // and set the initial Home View.
     try {
 
       const box =
@@ -1623,6 +1624,37 @@ fragments.list.onItemSet.add(
         grid.three.updateMatrixWorld();
 
       }
+
+      // HOME VIEW
+      const center =
+        box.getCenter(
+          new THREE.Vector3(),
+        );
+
+      const size =
+        box.getSize(
+          new THREE.Vector3(),
+        );
+
+      const maxSize =
+        Math.max(
+          size.x,
+          size.y,
+          size.z,
+        );
+
+      const distance =
+        maxSize * 1.2;
+
+      world.camera.controls.setLookAt(
+        center.x + distance * 0.7,
+        center.y + distance * 0.45,
+        center.z + distance * 0.7,
+        center.x,
+        center.y,
+        center.z,
+        true,
+      );
 
     } catch (e) {
 
