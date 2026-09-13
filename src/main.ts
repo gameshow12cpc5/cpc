@@ -1581,11 +1581,128 @@ viewCube.addEventListener(
 
 
 // ------------------------------------------------------------
+// START: RESET VIEWER
+// ------------------------------------------------------------
+async function resetViewer() {
+
+  // Home View
+  setHomeView();
+
+  // Reset all floors
+  await hider.set(true);
+
+  for (
+    const key
+    of floorGroups.keys()
+  ) {
+
+    floorGroups.set(
+      key,
+      true,
+    );
+
+  }
+
+  renderFloorControls();
+
+
+  // Reset all element types
+  for (
+    const definition
+    of elementTypeDefinitions
+  ) {
+
+    await setElementTypeVisibility(
+      definition.name,
+      true,
+    );
+
+  }
+
+  renderElementTypeVisibilityControls();
+  
+
+  // Keep IFCSPACE hidden
+  await setIfcSpacesVisibility(false);
+
+}
+
+// ------------------------------------------------------------
+// END: RESET VIEWER
+// ------------------------------------------------------------
+
+
+
+// ------------------------------------------------------------
+// START: HOME VIEW
+// ------------------------------------------------------------
+
+let currentModel: any = null;
+
+function setHomeView() {
+
+  if (!currentModel) {
+    return;
+  }
+
+  try {
+
+    const box =
+      new THREE.Box3()
+        .setFromObject(
+          currentModel.object,
+        );
+
+    const center =
+      box.getCenter(
+        new THREE.Vector3(),
+      );
+
+    const size =
+      box.getSize(
+        new THREE.Vector3(),
+      );
+
+    const maxSize =
+      Math.max(
+        size.x,
+        size.y,
+        size.z,
+      );
+
+    const distance =
+      maxSize * 1.2;
+
+    world.camera.controls.setLookAt(
+      center.x + distance * 0.7,
+      center.y + distance * 0.45,
+      center.z + distance * 0.7,
+      center.x,
+      center.y,
+      center.z,
+      true,
+    );
+
+  } catch (e) {
+
+    // Ignore bounding-box failures.
+
+  }
+}
+
+// ------------------------------------------------------------
+// END: HOME VIEW
+// ------------------------------------------------------------
+
+
+// ------------------------------------------------------------
 // START: MODEL RENDERING ON LOAD
 // ------------------------------------------------------------
 
 fragments.list.onItemSet.add(
   async ({ value: model }) => {
+
+    currentModel = model;
 
     model.useCamera(
       world.camera.three,
@@ -1625,37 +1742,8 @@ fragments.list.onItemSet.add(
 
       }
 
-      // HOME VIEW
-      const center =
-        box.getCenter(
-          new THREE.Vector3(),
-        );
-
-      const size =
-        box.getSize(
-          new THREE.Vector3(),
-        );
-
-      const maxSize =
-        Math.max(
-          size.x,
-          size.y,
-          size.z,
-        );
-
-      const distance =
-        maxSize * 1.2;
-
-      world.camera.controls.setLookAt(
-        center.x + distance * 0.7,
-        center.y + distance * 0.45,
-        center.z + distance * 0.7,
-        center.x,
-        center.y,
-        center.z,
-        true,
-      );
-
+      setHomeView();    
+    
     } catch (e) {
 
       // Ignore bounding-box failures.
@@ -4380,13 +4468,13 @@ const panel =
               </bim-button>
 
               <bim-button
-                label="Reset Selection"
+                label="Reset"
                 @click=${() => {
-                  resetSpatialTreeSelection();
-                  clearPropertyPanel();
+                resetViewer();
                 }}
               >
               </bim-button>
+
 
             </div>
 
