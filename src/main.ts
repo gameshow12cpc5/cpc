@@ -1290,18 +1290,139 @@ const toggleIfcSpacesVisibility =
 // START: FUNCTION - classifyFloors()
 // ------------------------------------------------------------
 
-const classifyFloors = async () => {
+const classifyFloors = async (
+  model: any,
+) => {
 
   try {
 
-    await classifier.byIfcBuildingStorey({
-      classificationName:
-        storeyClassificationName,
+    const geometryIds =
+      new Set(
+        await model.getItemsIdsWithGeometry(),
+      );
 
-      modelIds: [
-        /sample-model/,
-      ],
-    });
+    const spacesByCategory =
+      await model.getItemsOfCategories([
+        /^IFCSPACE$/i,
+      ]);
+
+    const spaceIds =
+      new Set(
+        Object.values(
+          spacesByCategory,
+        )
+          .flat()
+          .filter(
+            (id): id is number =>
+              typeof id === "number",
+          ),
+      );
+
+    const storeysByCategory =
+      await model.getItemsOfCategories([
+        /^IFCBUILDINGSTOREY$/i,
+      ]);
+
+    const storeyIds =
+      Object.values(
+        storeysByCategory,
+      )
+        .flat()
+        .filter(
+          (id): id is number =>
+            typeof id === "number",
+        );
+
+    const storeyItems =
+      await model.getItemsData(
+        storeyIds,
+      );
+
+    const storeys =
+      storeyIds.map(
+        (storeyId, index) => {
+
+          const storeyItem =
+            storeyItems.find(
+              (item: any) =>
+                item?._localId?.value === storeyId,
+            );
+
+          const storeyName =
+            storeyItem?.Name?.value ||
+            `Floor ${index + 1}`;
+
+          return {
+            storeyId,
+            storeyName,
+            ids: new Set<number>(),
+          };
+
+        },
+      );
+
+    const walk = (
+      item: any,
+      currentStoreyId: number | null,
+    ) => {
+
+      const nextStoreyId =
+        storeyIds.includes(
+          item.localId,
+        )
+          ? item.localId
+          : currentStoreyId;
+
+      if (
+        nextStoreyId !== null &&
+        geometryIds.has(item.localId) &&
+        !spaceIds.has(item.localId)
+      ) {
+
+        const storey =
+          storeys.find(
+            ({ storeyId }) =>
+              storeyId === nextStoreyId,
+          );
+
+        storey?.ids.add(
+          item.localId,
+        );
+
+      }
+
+      item.children?.forEach(
+        (child: any) =>
+          walk(
+            child,
+            nextStoreyId,
+          ),
+      );
+
+    };
+
+    walk(
+      await model.getSpatialStructure(),
+      null,
+    );
+
+    for (
+      const {
+        storeyName,
+        ids,
+      }
+      of storeys
+    ) {
+
+      classifier.addGroupItems(
+        storeyClassificationName,
+        storeyName,
+        {
+          [model.modelId]: ids,
+        },
+      );
+
+    }
 
     renderFloorControls();
 
@@ -1757,7 +1878,9 @@ fragments.list.onItemSet.add(
 
     }
 
-    await classifyFloors();
+    await classifyFloors(
+      model,
+    );
 
     await setIfcSpacesVisibility(
       false,
@@ -3983,27 +4106,6 @@ const applyTreeSelectionVisual =
 
   };
 
-// ------------------------------------------------------------
-// END: FUNCTION - applyTreeSelectionVisual()
-// ------------------------------------------------------------
-
-// ------------------------------------------------------------
-// START: FUNCTION - resetSpatialTreeSelection()
-// ------------------------------------------------------------
-
-const resetSpatialTreeSelection = () => {
-
-  // Restore the entire model to normal opacity here.  
-  setMaterialOpacity(
-     1,
-  );
-
-
-};
-
-// ------------------------------------------------------------
-// END: FUNCTION - resetSpatialTreeSelection()
-// ------------------------------------------------------------
 
 
 // ------------------------------------------------------------
