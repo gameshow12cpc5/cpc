@@ -307,7 +307,7 @@ const loadSampleFragment = async () => {
   try {
 
     // Download the FRAG file.
-    const response = await fetch("/sample.frag");
+    const response = await fetch("/new_model.frag");
 
     // Explicitly check HTTP errors.
     if (!response.ok) {
