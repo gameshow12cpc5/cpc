@@ -252,7 +252,13 @@ components.init();
 const ifcLoader = components.get(OBC.IfcLoader);
 
 // Prepare the IFC Loader.
-await ifcLoader.setup();
+await ifcLoader.setup({
+  autoSetWasm: false,
+  wasm: {
+    path: "/web-ifc/",
+    absolute: true,
+  },
+});
 
 // ============================================================
 // END: INITIALIZE IFC LOADER
@@ -264,7 +270,8 @@ await ifcLoader.setup();
 // ============================================================
 
 // Get the worker used by the Fragments system.
-const workerUrl = await OBC.FragmentsManager.getWorker();
+const workerUrl =
+  "/fragments-worker.mjs";
 
 // Get the Fragments Manager.
 const fragments = components.get(OBC.FragmentsManager);
