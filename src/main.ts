@@ -4487,6 +4487,21 @@ const panel =
 
             ${loadFragBtn}
 
+            ${(() => {
+              const searchTree = () => {
+                const input =
+                  document.getElementById(
+                    "tree-search-input",
+                  ) as BUI.TextInput | null;
+
+                if (input) {
+                  spatialTree.queryString =
+                    input.value;
+                }
+              };
+
+              return BUI.html`
+
             <div
               style="
                 display:flex;
@@ -4499,26 +4514,17 @@ const panel =
                 style="flex:1;"
                 id="tree-search-input"
                 placeholder="Search tree..."
+                @keydown=${(event: KeyboardEvent) => {
+                  if (event.key === "Enter") {
+                    searchTree();
+                  }
+                }}
               >
               </bim-text-input>
 
               <bim-button
                 label="Search"
-                @click=${() => {
-
-                  const input =
-                    document.getElementById(
-                      "tree-search-input",
-                    ) as BUI.TextInput | null;
-
-                  if (input) {
-
-                    spatialTree.queryString =
-                      input.value;
-
-                  }
-
-                }}
+                @click=${searchTree}
               >
               </bim-button>
 
@@ -4557,6 +4563,8 @@ const panel =
             </div>
 
             ${spatialTree}
+              `;
+            })()}
 
           </bim-panel-section>
 
