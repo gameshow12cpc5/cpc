@@ -521,11 +521,25 @@ hider.enabled = true;
 const floorControlList =
   document.createElement("div");
 
+const floorTreeList =
+  document.createElement("div");
+
 const storeyClassificationName =
   "Storeys";
 
 const floorGroups =
   new Map<string, boolean>();
+
+type FloorTreeNode = {
+  modelId: string;
+  localId: number | null;
+  name: string;
+  category: string;
+  children: FloorTreeNode[];
+};
+
+const floorTreeData =
+  new Map<string, FloorTreeNode>();
 
 let ifcSpacesVisible = true;
 let clipperEnabled = false;
@@ -1126,6 +1140,408 @@ const renderFloorControls = () => {
 
 
 // ------------------------------------------------------------
+// START: FUNCTION - renderFloorTree()
+// ------------------------------------------------------------
+
+const renderFloorTree = () => {
+
+  floorTreeList.innerHTML =
+    "";
+
+  const storeys =
+    classifier.list.get(
+      storeyClassificationName,
+    );
+
+  if (
+    !storeys ||
+    storeys.size === 0
+  ) {
+    return;
+  }
+
+  const isIfcCategoryNode = (
+    node: FloorTreeNode,
+  ): boolean => {
+
+    const category =
+      (node.category ?? "")
+        .trim();
+
+    const name =
+      (node.name ?? "")
+        .trim();
+
+    return (
+      node.children.length > 0 &&
+      category.length > 0 &&
+      name === category &&
+      /^IFC[A-Z0-9_]+$/i.test(
+        category,
+      )
+    );
+
+  };
+
+  const formatNodeLabel = (
+    node: FloorTreeNode,
+  ): string => {
+
+    const safeName =
+      (node.name ?? "")
+        .trim() ||
+      (node.category ?? "")
+        .trim() ||
+      "Unnamed element";
+
+    if (
+      typeof node.localId ===
+        "number"
+    ) {
+      return `${safeName} (localId: ${node.localId})`;
+    }
+
+    return safeName;
+
+  };
+
+  const renderTreeBranch = (
+    node: FloorTreeNode,
+    container: HTMLDivElement,
+    depth = 0,
+  ) => {
+
+    const row =
+      document.createElement("div");
+
+    const label =
+      document.createElement("span");
+
+    const caret =
+      document.createElement("span");
+
+    const nestedContainer =
+      document.createElement("div");
+
+    row.style.display =
+      "flex";
+
+    row.style.alignItems =
+      "center";
+
+    row.style.justifyContent =
+      "space-between";
+
+    row.style.minHeight =
+      "1.75rem";
+
+    row.style.padding =
+      "0.15rem 0.5rem";
+
+    row.style.paddingLeft =
+      `${depth * 0.75 + 0.5}rem`;
+
+    row.style.borderBottom =
+      "1px solid rgba(128, 128, 128, 0.12)";
+
+    row.style.fontSize =
+      "10px";
+
+    label.textContent =
+      formatNodeLabel(node);
+
+    label.style.flex =
+      "1";
+
+    label.style.whiteSpace =
+      "nowrap";
+
+    label.style.overflow =
+      "hidden";
+
+    label.style.textOverflow =
+      "ellipsis";
+
+    const hasChildren =
+      node.children.length > 0;
+
+    const isSelectable =
+      !!node.modelId &&
+      typeof node.localId ===
+        "number";
+
+    const treatAsCategoryGroup =
+      isIfcCategoryNode(node);
+
+    if (
+      hasChildren &&
+      !treatAsCategoryGroup
+    ) {
+
+      row.style.cursor =
+        "pointer";
+
+      nestedContainer.style.display =
+        "none";
+
+      nestedContainer.style.paddingLeft =
+        "0.75rem";
+
+      caret.textContent =
+        ">";
+
+      caret.style.fontSize =
+        "10px";
+
+      caret.style.lineHeight =
+        "1";
+
+      row.addEventListener(
+        "click",
+        (event) => {
+          event.stopPropagation();
+
+          if (isSelectable) {
+            selectDataFromRow(
+              node,
+            );
+            return;
+          }
+
+          const expanded =
+            nestedContainer.style.display !==
+              "none";
+
+          nestedContainer.style.display =
+            expanded
+              ? "none"
+              : "block";
+
+          caret.textContent =
+            expanded
+              ? ">"
+              : "v";
+        },
+      );
+
+    } else if (
+      treatAsCategoryGroup
+    ) {
+
+      row.style.cursor =
+        "pointer";
+
+      nestedContainer.style.display =
+        "none";
+
+      nestedContainer.style.paddingLeft =
+        "0.75rem";
+
+      caret.textContent =
+        ">";
+
+      caret.style.fontSize =
+        "10px";
+
+      caret.style.lineHeight =
+        "1";
+
+      row.addEventListener(
+        "click",
+        (event) => {
+          event.stopPropagation();
+
+          const expanded =
+            nestedContainer.style.display !==
+              "none";
+
+          nestedContainer.style.display =
+            expanded
+              ? "none"
+              : "block";
+
+          caret.textContent =
+            expanded
+              ? ">"
+              : "v";
+        },
+      );
+
+    } else if (isSelectable) {
+
+      row.style.cursor =
+        "pointer";
+
+      row.addEventListener(
+        "click",
+        (event) => {
+          event.stopPropagation();
+          selectDataFromRow(
+            node,
+          );
+        },
+      );
+
+    }
+
+    row.appendChild(label);
+
+    if (
+      hasChildren ||
+      treatAsCategoryGroup
+    ) {
+      row.appendChild(caret);
+    }
+
+    container.appendChild(
+      row,
+    );
+
+    if (hasChildren) {
+
+      for (
+        const child
+        of node.children
+      ) {
+        renderTreeBranch(
+          child,
+          nestedContainer,
+          depth + 1,
+        );
+      }
+
+      container.appendChild(
+        nestedContainer,
+      );
+
+    }
+
+  };
+
+  for (
+    const [storeyName]
+    of storeys
+  ) {
+
+    const floorRow =
+      document.createElement("div");
+
+    const floorLabel =
+      document.createElement("span");
+
+    const floorCaret =
+      document.createElement("span");
+
+    const childContainer =
+      document.createElement("div");
+
+    let expanded = false;
+
+    floorRow.style.display =
+      "flex";
+
+    floorRow.style.alignItems =
+      "center";
+
+    floorRow.style.justifyContent =
+      "space-between";
+
+    floorRow.style.minHeight =
+      "2rem";
+
+    floorRow.style.padding =
+      "0 0.5rem";
+
+    floorRow.style.borderBottom =
+      "1px solid rgba(128, 128, 128, 0.25)";
+
+    floorRow.style.cursor =
+      "pointer";
+
+    floorLabel.textContent =
+      storeyName ||
+      "Unnamed floor";
+
+    floorLabel.style.fontSize =
+      "10px";
+
+    childContainer.style.display =
+      "none";
+
+    childContainer.style.paddingLeft =
+      "1.5rem";
+
+    const floorTreeRoot =
+      floorTreeData.get(storeyName);
+
+    if (floorTreeRoot) {
+
+      for (
+        const child
+        of floorTreeRoot.children
+      ) {
+        renderTreeBranch(
+          child,
+          childContainer,
+          1,
+        );
+      }
+
+    }
+
+    floorCaret.textContent =
+      ">";
+
+    floorCaret.style.fontSize =
+      "10px";
+
+    floorCaret.style.lineHeight =
+      "1";
+
+    floorRow.appendChild(
+      floorLabel,
+    );
+
+    floorRow.appendChild(
+      floorCaret,
+    );
+
+    floorRow.addEventListener(
+      "click",
+      (event) => {
+        event.stopPropagation();
+        expanded = !expanded;
+
+        childContainer.style.display =
+          expanded
+            ? "block"
+            : "none";
+
+        floorCaret.textContent =
+          expanded
+            ? "v"
+            : ">";
+      },
+    );
+
+    floorTreeList.appendChild(
+      floorRow,
+    );
+
+    floorTreeList.appendChild(
+      childContainer,
+    );
+
+  }
+
+};
+
+// ------------------------------------------------------------
+// END: FUNCTION - renderFloorTree()
+// ------------------------------------------------------------
+
+
+// ------------------------------------------------------------
 // START: FUNCTION - debugIfcSpaces()
 // ------------------------------------------------------------
 
@@ -1296,6 +1712,8 @@ const classifyFloors = async (
 
   try {
 
+    floorTreeData.clear();
+
     const geometryIds =
       new Set(
         await model.getItemsIdsWithGeometry(),
@@ -1401,10 +1819,122 @@ const classifyFloors = async (
 
     };
 
+    const spatialStructure =
+      await model.getSpatialStructure();
+
     walk(
-      await model.getSpatialStructure(),
+      spatialStructure,
       null,
     );
+
+    const spatialNodes: any[] = [];
+    const spatialNodeIds =
+      new Set<number>();
+
+    const collectSpatialNodes = (
+      item: any,
+    ) => {
+      if (
+        typeof item.localId ===
+          "number"
+      ) {
+        spatialNodes.push(item);
+        spatialNodeIds.add(
+          item.localId,
+        );
+      }
+
+      item.children?.forEach(
+        (child: any) =>
+          collectSpatialNodes(child),
+      );
+    };
+
+    collectSpatialNodes(
+      spatialStructure,
+    );
+
+    const spatialItems =
+      spatialNodeIds.size > 0
+        ? await model.getItemsData(
+            [...spatialNodeIds],
+          )
+        : [];
+
+    const spatialItemsById =
+      new Map<number, any>(
+        spatialItems.map(
+          (item: any) => [
+            item?._localId?.value,
+            item,
+          ],
+        ),
+      );
+
+    const createFloorTreeNode = (
+      item: any,
+    ): FloorTreeNode => {
+      const localId =
+        typeof item.localId ===
+          "number"
+          ? item.localId
+          : null;
+
+      const itemData =
+        localId === null
+          ? undefined
+          : spatialItemsById.get(
+              localId,
+            );
+
+      return {
+        modelId: model.modelId,
+        localId,
+        name: String(
+          item.children?.length > 0
+            ? item.category
+            : itemData?.Name?.value ||
+              item.category ||
+              "Unnamed element",
+        ),
+        category: String(
+          item.category ||
+          "IFC Element",
+        ),
+        children: (item.children ?? [])
+          .map(
+            (child: any) =>
+              createFloorTreeNode(child),
+          ),
+      };
+    };
+
+    for (
+      const {
+        storeyId,
+        storeyName,
+      }
+      of storeys
+    ) {
+
+      const storeyNode =
+        spatialNodes.find(
+          (item: any) =>
+            item.localId === storeyId,
+        );
+
+      if (!storeyNode) {
+        continue;
+      }
+
+      floorTreeData.set(
+        storeyName,
+        createFloorTreeNode(
+          storeyNode,
+        ),
+      );
+
+    }
 
     for (
       const {
@@ -1425,6 +1955,7 @@ const classifyFloors = async (
     }
 
     renderFloorControls();
+    renderFloorTree();
 
   } catch (error) {
 
@@ -4022,58 +4553,6 @@ const runRawBIMQuery = async (
 
 
 // ------------------------------------------------------------
-// START: FUNCTION - setMaterialOpacity()
-// ------------------------------------------------------------
-
-const setMaterialOpacity = (
-  opacity: number,
-) => {
-
-  for (
-    const [, material]
-    of fragments.core.models.materials.list
-  ) {
-
-    const mat =
-      material as THREE.Material & {
-        opacity?: number;
-        transparent?: boolean;
-        depthWrite?: boolean;
-      };
-
-    if ("opacity" in mat) {
-      mat.opacity =
-        opacity;
-    }
-
-    if ("transparent" in mat) {
-
-      mat.transparent =
-        opacity < 1;
-
-    }
-
-    // Prevent transparent objects from blocking
-    // objects behind them.
-    if ("depthWrite" in mat) {
-
-      mat.depthWrite =
-        opacity >= 1;
-
-    }
-
-    mat.needsUpdate =
-      true;
-
-  }
-
-};
-
-// ------------------------------------------------------------
-// END: FUNCTION - setMaterialOpacity()
-// ------------------------------------------------------------
-
-// ------------------------------------------------------------
 // START: FUNCTION - applyTreeSelectionVisual()
 // ------------------------------------------------------------
 
@@ -4563,6 +5042,8 @@ const panel =
             </div>
 
             ${spatialTree}
+
+            ${floorTreeList}
               `;
             })()}
 
