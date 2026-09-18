@@ -721,8 +721,29 @@ const elementTypeDefinitions = [
 const elementTypeVisibility =
   new Map<string, boolean>();
 
+const views =
+  components.get(OBC.Views);
+
+views.enabled = true;
+views.world = world;
+
 const elementTypeListContainer =
   document.createElement("div");
+
+const twoDViewListContainer =
+  document.createElement("div");
+
+twoDViewListContainer.style.display =
+  "flex";
+
+twoDViewListContainer.style.flexDirection =
+  "column";
+
+twoDViewListContainer.style.gap =
+  "0.35rem";
+
+twoDViewListContainer.style.marginTop =
+  "0.5rem";
 
 elementTypeListContainer.style.display =
   "flex";
@@ -910,6 +931,262 @@ const renderElementTypeVisibilityControls = () => {
 // ------------------------------------------------------------
 
 renderElementTypeVisibilityControls();
+
+// ------------------------------------------------------------
+// START: FUNCTION - render2DViewControls()
+// ------------------------------------------------------------
+
+const activate2DView = (
+  viewId: string,
+) => {
+
+  try {
+    const view =
+      views.list.get(viewId);
+
+    if (!view) {
+      return;
+    }
+
+    if (view.open) {
+      return;
+    }
+
+    views.close();
+    views.open(viewId);
+  } catch (error) {
+    console.error(
+      "Failed to open 2D view:",
+      error,
+    );
+  }
+
+  render2DViewControls();
+
+};
+
+const render2DViewControls = () => {
+
+  twoDViewListContainer.innerHTML =
+    "";
+
+  const closeButton =
+    document.createElement(
+      "bim-button",
+    ) as any;
+
+  closeButton.label =
+    "Close Active 2D View";
+
+  closeButton.style.marginBottom =
+    "0.5rem";
+
+  closeButton.addEventListener(
+    "click",
+    () => {
+
+      try {
+        views.close();
+      } catch (error) {
+        console.error(
+          "Failed to close 2D view:",
+          error,
+        );
+      }
+
+      render2DViewControls();
+
+    },
+  );
+
+  twoDViewListContainer.appendChild(
+    closeButton,
+  );
+
+  const viewEntries =
+    [...views.list.values()].sort(
+      (a, b) =>
+        a.id.localeCompare(b.id),
+    );
+
+  if (viewEntries.length === 0) {
+
+    const empty =
+      document.createElement("div");
+
+    empty.textContent =
+      "No 2D views generated yet.";
+
+    empty.style.opacity =
+      "0.8";
+
+    twoDViewListContainer.appendChild(
+      empty,
+    );
+
+    return;
+
+  }
+
+  for (const view of viewEntries) {
+
+    const row =
+      document.createElement("div");
+
+    row.style.display =
+      "flex";
+
+    row.style.alignItems =
+      "center";
+
+    row.style.justifyContent =
+      "space-between";
+
+    row.style.gap =
+      "0.5rem";
+
+    row.style.padding =
+      "0.3rem 0";
+
+    if (view.open) {
+      row.style.background =
+        "rgba(255,255,255,0.06)";
+      row.style.borderRadius =
+        "0.25rem";
+    }
+
+    const label =
+      document.createElement(
+        "bim-label",
+      );
+
+    label.textContent =
+      view.id;
+
+    const action =
+      document.createElement(
+        "bim-button",
+      ) as any;
+
+    action.label =
+      "View 2D";
+
+    action.addEventListener(
+      "click",
+      () => {
+        activate2DView(view.id);
+      },
+    );
+
+    row.append(
+      label,
+      action,
+    );
+
+    twoDViewListContainer.appendChild(
+      row,
+    );
+
+  }
+
+};
+
+// ------------------------------------------------------------
+// END: FUNCTION - render2DViewControls()
+// ------------------------------------------------------------
+
+const create2DViews = async () => {
+
+  if (views.list.size > 0) {
+
+    render2DViewControls();
+    return;
+
+  }
+
+  if (!currentModel) {
+    return;
+  }
+
+  const modelBox =
+    new THREE.Box3().setFromObject(
+      currentModel.object,
+    );
+
+  const size =
+    modelBox.getSize(
+      new THREE.Vector3(),
+    );
+
+  const maxY = modelBox.max.y;
+  const planeOffset = 0.25;
+
+  const floorViews =
+    await views.createFromIfcStoreys({
+      world,
+    });
+
+  for (const view of floorViews) {
+    view.range =
+      Math.max(size.x, size.z) * 1.15;
+  }
+
+  const roofView =
+    views.createFromPlane(
+      new THREE.Plane(
+        new THREE.Vector3(0, -1, 0),
+        maxY + planeOffset,
+      ),
+      {
+        id: "Roof",
+        world,
+      },
+    );
+
+  roofView.range =
+    Math.max(size.x, size.z) * 1.2;
+
+  const parapetView =
+    views.createFromPlane(
+      new THREE.Plane(
+        new THREE.Vector3(0, -1, 0),
+        maxY + 1.2,
+      ),
+      {
+        id: "Parapet",
+        world,
+      },
+    );
+
+  parapetView.range =
+    Math.max(size.x, size.z) * 1.2;
+
+  const elevationViews =
+    views.createElevations({
+      combine: true,
+      world,
+      namingCallback: () => ({
+        front: "Front",
+        back: "Back",
+        left: "Left",
+        right: "Right",
+      }),
+    });
+
+  for (const view of elevationViews) {
+    view.range =
+      Math.max(size.x, size.z) * 1.1;
+  }
+
+  render2DViewControls();
+
+};
+
+// ------------------------------------------------------------
+// END: FUNCTION - create2DViews()
+// ------------------------------------------------------------
+
+render2DViewControls();
 
 // ------------------------------------------------------------
 // START: FUNCTION - renderFloorControls()
@@ -1881,6 +2158,8 @@ fragments.list.onItemSet.add(
     await classifyFloors(
       model,
     );
+
+    await create2DViews();
 
     await setIfcSpacesVisibility(
       false,
@@ -4022,58 +4301,6 @@ const runRawBIMQuery = async (
 
 
 // ------------------------------------------------------------
-// START: FUNCTION - setMaterialOpacity()
-// ------------------------------------------------------------
-
-const setMaterialOpacity = (
-  opacity: number,
-) => {
-
-  for (
-    const [, material]
-    of fragments.core.models.materials.list
-  ) {
-
-    const mat =
-      material as THREE.Material & {
-        opacity?: number;
-        transparent?: boolean;
-        depthWrite?: boolean;
-      };
-
-    if ("opacity" in mat) {
-      mat.opacity =
-        opacity;
-    }
-
-    if ("transparent" in mat) {
-
-      mat.transparent =
-        opacity < 1;
-
-    }
-
-    // Prevent transparent objects from blocking
-    // objects behind them.
-    if ("depthWrite" in mat) {
-
-      mat.depthWrite =
-        opacity >= 1;
-
-    }
-
-    mat.needsUpdate =
-      true;
-
-  }
-
-};
-
-// ------------------------------------------------------------
-// END: FUNCTION - setMaterialOpacity()
-// ------------------------------------------------------------
-
-// ------------------------------------------------------------
 // START: FUNCTION - applyTreeSelectionVisual()
 // ------------------------------------------------------------
 
@@ -4697,6 +4924,23 @@ const panel =
             </bim-label>
 
             ${elementTypeListContainer}
+
+          </bim-panel-section>
+
+
+          <bim-panel-section
+            label="2D Views"
+          >
+
+            <div
+              style="
+                display:flex;
+                flex-direction:column;
+                gap:0.5rem;
+              "
+            >
+              ${twoDViewListContainer}
+            </div>
 
           </bim-panel-section>
 
